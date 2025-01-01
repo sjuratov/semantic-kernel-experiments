@@ -1,0 +1,4 @@
+semantic-kernel
+ipykernel
+pandas
+pyperclip
