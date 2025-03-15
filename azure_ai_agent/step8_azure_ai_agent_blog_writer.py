@@ -24,7 +24,7 @@ class ApprovalTerminationStrategy(TerminationStrategy):
         return "approved" in history[-1].content.lower()
 
 # Give agents a task to create blog post
-TASK = "Why is the sky blue?"
+TASK = "Why is the ocean blue?"
 
 async def main() -> None:
     async with (
@@ -64,22 +64,46 @@ async def main() -> None:
             definition=blog_writer_critique_agent_definition,
         )
 
-        # 7. Place the agents in a group chat with a custom termination strategy
-        chat = AgentGroupChat(
-            agents=[agent_web_search, agent_blog_writer, agent_blog_writer_critique],
-            termination_strategy=ApprovalTerminationStrategy(agents=[agent_blog_writer_critique], maximum_iterations=10),
-        )
+        # 3. Create a new thread on the Azure AI agent service
+        thread = await client.agents.create_thread()
 
         try:
-            # 6. Add the task as a message to the group chat
-            await chat.add_chat_message(message=TASK)
-            print(f"# {AuthorRole.USER}: '{TASK}'")
-            # 7. Invoke the chat
-            async for content in chat.invoke():
+            # 4. Add the user input as a chat message
+            await agent_web_search.add_chat_message(thread_id=thread.id, message=TASK)
+            print(f"# User: {TASK}")
+            # 5. Invoke the agent for the specified thread for response
+            response = await agent_web_search.get_response(thread_id=thread.id)
+            print(f"# {response.name}: {response}")
+        finally:
+            # 6. Cleanup: Delete the thread and agent
+            await client.agents.delete_thread(thread.id)
+
+        # Create a new task that includes the web search results
+        blog_task = f"""
+        Create a concise blog post.
+        Use this information from web search:
+        {response}
+        """
+        
+        # Set up a chat just between the writer and critique agents
+        blog_chat = AgentGroupChat(
+            agents=[agent_blog_writer, agent_blog_writer_critique],
+            termination_strategy=ApprovalTerminationStrategy(
+                agents=[agent_blog_writer_critique], 
+                maximum_iterations=10
+            ),
+        )
+        
+        try:
+            # Start the chat with the information-enriched task
+            await blog_chat.add_chat_message(message=blog_task)
+            
+            # Run the iterative writing/critique process
+            async for content in blog_chat.invoke():
                 print(f"# {content.role} - {content.name or '*'}: '{content.content}'")
         finally:
-            # 8. Cleanup: Delete the agents
-            await chat.reset()
+            # Cleanup
+            await blog_chat.reset()
 
 if __name__ == "__main__":
     asyncio.run(main())
