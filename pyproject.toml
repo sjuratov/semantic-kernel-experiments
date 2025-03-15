@@ -12,4 +12,4 @@ dependencies = [
 ]
 
 [tool.uv.workspace]
-members = ["Chat_Completion_Agent", "Open_AI_Assistant_Agent_Code_Interpreter", "Open_AI_Assistant_Agent_File_Search", "Coordinate_Agent_Collaboration_using_Agent_Group_Chat"]
+members = ["Chat_Completion_Agent", "Open_AI_Assistant_Agent_Code_Interpreter", "Open_AI_Assistant_Agent_File_Search", "Coordinate_Agent_Collaboration_using_Agent_Group_Chat", "azure_ai_agent"]
